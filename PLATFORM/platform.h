@@ -35,6 +35,125 @@ struct FRECT
 
 namespace dll
 {
+	template<typename T> class BAG
+	{
+	private:
+		T* m_ptr{ nullptr };
+		size_t max_size{ 0 };
+		size_t next_pos{ 0 };
+
+	public:
+		BAG() :max_size{ 1 }, m_ptr{ reinterpret_cast<T*>(calloc(max_size,sizeof(T))) } {};
+		BAG(size_t lenght) :max_size{ lenght }, m_ptr{ reinterpret_cast<T*>(calloc(lenght,sizeof(T))) } {};
+		BAG(const BAG<T>& other)
+		{
+			if (other.m_ptr == this->m_ptr || other.next_pos < 1)return;
+
+			m_ptr = reinterpret_cast<T*>(calloc(other.max_size, sizeof(T)));
+			max_size = other.max_size;
+			next_pos = other.next_pos;
+
+			for (size_t count = 0; count < next_pos; count++)m_ptr[count] = other.m_ptr[count];
+		}
+
+		~BAG()
+		{
+			if (m_ptr)free(m_ptr);
+		}
+
+		bool empty() const
+		{
+			if (next_pos == 0)return true;
+			return false;
+		}
+		size_t size() const
+		{
+			return next_pos;
+		}
+		size_t capacity() const
+		{
+			return max_size;
+		}
+
+		bool push_back(T element)
+		{
+			if (m_ptr)
+			{
+				if (next_pos + 1 < max_size)
+				{
+					m_ptr[next_pos] = element;
+					++next_pos;
+					return true;
+				}
+				else
+				{
+					++max_size;
+					m_ptr = reinterpret_cast<T*>(realloc(m_ptr, max_size * sizeof(T));
+					if (m_ptr)
+					{
+						m_ptr[next_pos] = element;
+						++next_pos;
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		bool push_back(T* element)
+		{
+			if (m_ptr)
+			{
+				if (next_pos + 1 < max_size)
+				{
+					m_ptr[next_pos] = (*element);
+					++next_pos;
+					return true;
+				}
+				else
+				{
+					++max_size;
+					m_ptr = reinterpret_cast<T*>(realloc(m_ptr, max_size * sizeof(T));
+					if (m_ptr)
+					{
+						m_ptr[next_pos] = (*element);
+						++next_pos;
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		void push_front(T element)
+		{
+			(*m_ptr) = element;
+		}
+		void push_front(T* element)
+		{
+			(*m_ptr) = (*element);
+		}
+
+		void erase(size_t index)
+		{
+			if (index >= next_pos)return;
+
+			if (m_ptr)
+			{
+				for (size_t count = index; count < next_pos - 1; ++count)m_ptr[count] = m_ptr[count + 1];
+				
+			}
+		}
+
+		BAG& operator [] (size_t index)
+		{
+			if (index >= next_pos) throw std::runtime_error("Wrong index !");
+			if (!m_ptr) throw std::runtime_error("Invalid data pointer !");
+
+			return m_ptr[index];
+		}
+	};
+	
+	
 	class PLATFORM_API PROTON
 	{
 	protected:
@@ -73,6 +192,9 @@ namespace dll
 
 
 	// FUNCTIONS *******************************************
+
+	template<typename T>concept primes = std::is_same<T, int>::value || std::is_same<T, float>::value
+		|| std::is_same<T, double>::value || std::is_same<T, long>::value || std::is_same<T, char>::value;
 
 	bool PLATFORM_API Intersect(FRECT first, FRECT second);
 
