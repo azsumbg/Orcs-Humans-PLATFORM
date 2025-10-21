@@ -17,8 +17,11 @@ constexpr float ground { 750.0f };
 
 enum class dirs { left = 0, right = 1, up = 2, down = 3, stop = 4 };
 enum class actions { stop = 0, move = 1, flee = 2, harvest = 3, shoot = 4, melee = 5 };
-enum class unit_type { peon = 0, warrior = 1, archer = 2, knight = 3, artillery = 4 };
-enum class obstacle { rock = 0, small_tree = 1, mid_tree = 2, big_tree = 3 };
+enum class unit_type {
+	peon = 0, orc_warrior = 1, orc_archer = 2, orc_knight = 3, artillery = 4,
+	peasant = 5, warrior = 6, archer = 7, knight = 8
+};
+enum class obstacle { rock = 0, small_tree = 1, mid_tree = 2, big_tree = 3, orc_castle = 4, human_castle = 5, mine = 6 };
 
 struct FPOINT
 {
@@ -144,16 +147,53 @@ namespace dll
 			}
 		}
 
-		BAG& operator [] (size_t index)
+		T& operator [] (size_t index)
 		{
 			if (index >= next_pos) throw std::runtime_error("Wrong index !");
 			if (!m_ptr) throw std::runtime_error("Invalid data pointer !");
 
 			return m_ptr[index];
 		}
+
+		BAG& operator =(BAG& other)
+		{
+			if (m_ptr)
+			{
+				if (this->m_ptr == other.m_ptr)return other;
+
+				if (this->max_size >= other.max_size)
+				{
+					for (size_t count = 0; count < other.next_pos; ++count)m_ptr[count] = other[count];
+				}
+				else
+				{
+					max_size = other.max_size;
+
+					m_ptr = reinterpret_cast<T*>(realloc(m_ptr, max_size * sizeof(T)));
+					if (m_ptr)
+					{
+						for (size_t count = 0; count < other.next_pos; ++count)m_ptr[count] = other[count];
+					}
+				}
+			}
+		}
 	};
 	
+	/// ////////////////////////////////////////////
 	
+	class PLATFORM_API RANDIT
+	{
+	private:
+		std::mt19937* twister{ nullptr };
+
+	public:
+		RANDIT();
+		RANDIT(RANDIT& other);
+		~RANDIT();
+
+		int operator()(int min, int max);
+	};
+
 	class PLATFORM_API PROTON
 	{
 	protected:
@@ -183,19 +223,137 @@ namespace dll
 		float GetHeight() const;
 	};
 
+	class PLATFORM_API ASSETS :public PROTON
+	{
+	private:
+		int goods_in_asset{ 0 };
+		int goods_delay = 0;
+		int max_goods_delay;
 
+		int max_frames{ 0 };
+		int frame{ 0 };
+		int frame_delay{ 0 };
+		int max_frame_delay{ 0 };
 
+		ASSETS(obstacle what_type, float start_x, float start_y);
 
+	public:
+		obstacle type;
+		int lifes = 0;
 
+		int GetFrame();
+		int GetGoods();
+		void Release();
 
+		friend PLATFORM_API ASSETS* AssetFactory(obstacle what, float startx, float starty);
+	};
 
+	class PLATFORM_API UNITS :public PROTON
+	{
+	private:
+		float speed{ 0 };
+		float strenght{ 0 };
+		float range{ 0 };
 
+		int max_frames{ 0 };
+		int frame{ 0 };
+		int frame_delay{ 0 };
+		int max_frame_delay{ 0 };
+
+		int attack_delay{ 0 };
+		int max_attack_delay{ 0 };
+
+		bool hor_path{ false };
+		bool vert_path{ false };
+		float slope{ 0 };
+		float intercept{ 0 };
+		
+		float start_move_x{ 0 };
+		float start_move_y{ 0 };
+		float final_move_x{ 0 };
+		float final_move_y{ 0 };
+
+		UNITS(unit_type what, float start_x, float start_y);
+
+		void SetPath(float _where_x, float _where_y);
+
+	public:
+		unit_type type{ unit_type::peon };
+		dirs dir{ dirs::stop };
+		
+		int lifes{ 0 };
+
+		virtual ~UNITS() {};
+		void Release();
+
+		int GetFrame();
+
+		void Move(float gear, BAG<ASSETS>obstacles);
+		int Attack();
+
+		friend PLATFORM_API actions AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>Obstacles);
+		friend PLATFORM_API UNITS* UnitFactory(unit_type what_unit, float startx, float starty);	
+	};
 
 	// FUNCTIONS *******************************************
 
 	template<typename T>concept primes = std::is_same<T, int>::value || std::is_same<T, float>::value
 		|| std::is_same<T, double>::value || std::is_same<T, long>::value || std::is_same<T, char>::value;
 
-	bool PLATFORM_API Intersect(FRECT first, FRECT second);
+	template<primes T> void Sort(BAG<T>& bag, bool ascending = true)
+	{
+		if (bag.size() > 1)
+		{
+			if (ascending)
+			{
+				bool is_ok = false;
 
+				while (!is_ok)
+				{
+					is_ok = true;
+
+					for (size_t count = 0; count < bag.size() - 1; ++count)
+					{
+						if (bag[count] > bag[count + 1])
+						{
+							T temp = bag[count];
+							bag[count] = bag[count + 1];
+							bag[count + 1] = temp;
+							is_ok = false;
+						}
+					}
+				}
+			}
+			else
+			{
+				bool is_ok = false;
+
+				while (!is_ok)
+				{
+					is_ok = true;
+
+					for (size_t count = 0; count < bag.size() - 1; ++count)
+					{
+						if (bag[count] < bag[count + 1])
+						{
+							T temp = bag[count];
+							bag[count] = bag[count + 1];
+							bag[count + 1] = temp;
+							is_ok = false;
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	bool PLATFORM_API Intersect(FRECT first, FRECT second);
+	float PLATFORM_API Distance(FPOINT first, FPOINT second);
+	void PLATFORM_API Sort(BAG<UNITS>& army, FPOINT target);
+
+	PLATFORM_API actions AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>Obstacles);
+
+	PLATFORM_API ASSETS* AssetFactory(obstacle what, float startx, float starty);
+
+	PLATFORM_API UNITS* UnitFactory(unit_type what_unit, float startx, float starty);
 }
