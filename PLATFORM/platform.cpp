@@ -377,18 +377,78 @@ void dll::UNITS::Move(float gear, BAG<ASSETS>obstacles)
 {
 	float now_speed = speed * gear / 10.0f;
 
+	char obstacle = 0b00000000;
+
+	char up = 0b00000001;
+	char down = 0b00000010;
+	char left = 0b00000100;
+	char right = 0b00001000;
+
+	char up_left = 0b00000101;
+	char up_right = 0b00001001;
+	char down_left = 0b00000110;
+	char down_right = 0b00001010;
+
+	float remaining_x{ 0 };
+	float remaining_y{ 0 };
+
+	if (final_move_x > start_move_x)remaining_x = final_move_x - start_move_x;
+	else remaining_x = start_move_x - final_move_x;
+
+	if (final_move_y > start_move_y)remaining_y = final_move_y - start_move_y;
+	else remaining_y = start_move_y - final_move_y;
+
+	for (size_t i = 0; i < obstacles.size(); ++i)
+	{
+		if (Intersect(FRECT(FPOINT(start.x, start.y), FPOINT(end.x, start.y), FPOINT(start.x, end.y), FPOINT(end.x, end.y)),
+			FRECT(FPOINT(obstacles[i].start.x, obstacles[i].start.y),
+				FPOINT(obstacles[i].end.x, obstacles[i].start.y),
+				FPOINT(obstacles[i].start.x, obstacles[i].end.y), 
+				FPOINT(obstacles[i].end.x, obstacles[i].end.y))))
+		{
+			if (obstacles[i].type == obstacle::small_tree || obstacles[i].type == obstacle::mid_tree
+				|| obstacles[i].type == obstacle::big_tree || obstacles[i].type == obstacle::mine)
+			{
+				current_action = actions::harvest;
+				return;
+			}
+			
+
+			if (start.y >= obstacles[i].start.y && start.y <= obstacles[i].end.y)obstacle |= up;
+			if (end.y >= obstacles[i].start.y && end.y <= obstacles[i].end.y)obstacle |= down;
+
+			if (end.x >= obstacles[i].start.x && end.x <= obstacles[i].end.x)obstacle |= right;
+			if (start.x >= obstacles[i].start.x && start.x <= obstacles[i].end.x)obstacle |= left;
+
+			break;
+		}
+			
+	}
+
+	if (obstacle != 0)
+	{
+		if (obstacle & up_right)SetPath(start.x - remaining_x, end.y + remaining_y);
+		else if (obstacle & up_left)SetPath(start.x + remaining_x, end.y + remaining_y);
+		else if (obstacle & down_right)SetPath(start.x - remaining_x, end.y - remaining_y);
+		else if (obstacle & down_left)SetPath(start.x + remaining_x, end.y - remaining_y);
+		else if (obstacle & up)SetPath(start.x, end.y + remaining_y);
+		else if (obstacle & down)SetPath(start.x, start.y - remaining_y);
+		else if (obstacle & left)SetPath(start.x + remaining_x, end.y);
+		else if (obstacle & right)SetPath(start.x - remaining_x, start.y);
+	}
+	
 	if (vert_path)
 	{
 		if (start_move_y > final_move_y)
 		{
-			if (start.y - now_speed >= sky)
+			if (start.y - now_speed >= sky && start.y - now_speed > final_move_y)
 			{
 				start.y -= now_speed;
 				SetEdges();
 				return;
 			}
 		}
-		else if (end.y + now_speed <= ground)
+		else if (end.y + now_speed <= ground && end.y + now_speed < final_move_y)
 		{
 			start.y += now_speed;
 			SetEdges();
@@ -397,7 +457,7 @@ void dll::UNITS::Move(float gear, BAG<ASSETS>obstacles)
 	}
 	if (hor_path)
 	{
-		if (start_move_x > final_move_x)
+		if (start_move_x > final_move_x && start.x - now_speed > final_move_x)
 		{
 			if (start.x - now_speed >= 0)
 			{
@@ -406,7 +466,7 @@ void dll::UNITS::Move(float gear, BAG<ASSETS>obstacles)
 				return;
 			}
 		}
-		else if (end.x + now_speed <= scr_width)
+		else if (end.x + now_speed <= scr_width && end.x + now_speed < final_move_x)
 		{
 			start.x += now_speed;
 			SetEdges();
@@ -414,7 +474,7 @@ void dll::UNITS::Move(float gear, BAG<ASSETS>obstacles)
 		}
 	}
 
-	if (start_move_x > final_move_x)
+	if (start_move_x > final_move_x && start.x - now_speed > final_move_x)
 	{
 		float next_y = (start.x - now_speed) * slope + intercept;
 
@@ -426,7 +486,7 @@ void dll::UNITS::Move(float gear, BAG<ASSETS>obstacles)
 			return;
 		}
 	}
-	if (start_move_x < final_move_x)
+	if (start_move_x < final_move_x && end.x + now_speed < final_move_x)
 	{
 		float next_y = (start.x + now_speed) * slope + intercept;
 
@@ -438,7 +498,7 @@ void dll::UNITS::Move(float gear, BAG<ASSETS>obstacles)
 			return;
 		}
 	}
-	
+
 }
 int dll::UNITS::Attack()
 {

@@ -280,7 +280,8 @@ namespace dll
 	public:
 		unit_type type{ unit_type::peon };
 		dirs dir{ dirs::stop };
-		
+		actions current_action{ actions::stop };
+
 		int lifes{ 0 };
 
 		virtual ~UNITS() {};
