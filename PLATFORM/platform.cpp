@@ -609,19 +609,32 @@ ACTPARAMS dll::AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>& Obsta
 
 			if (ret.next_action == actions::flee)break;
 		}
-		ret.next_action = params.next_action;
+		ret.next_action = my_unit.current_action;
 		if (my_unit.current_action == actions::move)
 			{
 				if (!Obstacles.empty())
 				{
 					for (size_t count = 0; count < Obstacles.size(); ++count)
 					{
-						if (Obstacles[count].type == obstacle::small_tree || Obstacles[count].type == obstacle::mid_tree
-							|| Obstacles[count].type == obstacle::big_tree)
+						if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+							my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+							FRECT(Obstacles[count].start.x, Obstacles[count].start.y, Obstacles[count].end.x,
+								Obstacles[count].start.y, Obstacles[count].start.x, Obstacles[count].end.y,
+								Obstacles[count].end.x, Obstacles[count].end.y)))
 						{
-							ret.tree_involved = Obstacles[count].GetMyNumber();
-							ret.next_action = actions::harvest;
-							break;
+							if (Obstacles[count].type == obstacle::small_tree || Obstacles[count].type == obstacle::mid_tree
+								|| Obstacles[count].type == obstacle::big_tree)
+							{
+								ret.asset_involved = Obstacles[count].GetMyNumber();
+								ret.next_action = actions::harvest;
+								break;
+							}
+							else if (Obstacles[count].type == obstacle::mine)
+							{
+								ret.asset_involved = Obstacles[count].GetMyNumber();
+								ret.next_action = actions::mining;
+								break;
+							}
 						}
 					}
 				}
@@ -632,9 +645,9 @@ ACTPARAMS dll::AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>& Obsta
 				{
 					for (size_t count = 0; count < Obstacles.size(); ++count)
 					{
-						if (Obstacles[count].GetMyNumber() == params.tree_involved && Obstacles[count].lifes <= 0)
+						if (Obstacles[count].GetMyNumber() == params.asset_involved && Obstacles[count].lifes <= 0)
 						{
-							ret.tree_involved = params.tree_involved;
+							ret.asset_involved = params.asset_involved;
 							ret.next_action = actions::return_wood;
 							break;
 						}
@@ -674,19 +687,32 @@ ACTPARAMS dll::AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>& Obsta
 
 			if (ret.next_action == actions::flee)break;
 		}
-		ret.next_action = params.next_action;
+		ret.next_action = my_unit.current_action;
 		if (my_unit.current_action == actions::move)
 		{
 			if (!Obstacles.empty())
 			{
 				for (size_t count = 0; count < Obstacles.size(); ++count)
 				{
-					if (Obstacles[count].type == obstacle::small_tree || Obstacles[count].type == obstacle::mid_tree
-						|| Obstacles[count].type == obstacle::big_tree)
+					if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+						my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+						FRECT(Obstacles[count].start.x, Obstacles[count].start.y, Obstacles[count].end.x,
+							Obstacles[count].start.y, Obstacles[count].start.x, Obstacles[count].end.y,
+							Obstacles[count].end.x, Obstacles[count].end.y)))
 					{
-						ret.tree_involved = Obstacles[count].GetMyNumber();
-						ret.next_action = actions::harvest;
-						break;
+						if (Obstacles[count].type == obstacle::small_tree || Obstacles[count].type == obstacle::mid_tree
+							|| Obstacles[count].type == obstacle::big_tree)
+						{
+							ret.asset_involved = Obstacles[count].GetMyNumber();
+							ret.next_action = actions::harvest;
+							break;
+						}
+						else if (Obstacles[count].type == obstacle::mine)
+						{
+							ret.asset_involved = Obstacles[count].GetMyNumber();
+							ret.next_action = actions::mining;
+							break;
+						}
 					}
 				}
 			}
@@ -697,9 +723,9 @@ ACTPARAMS dll::AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>& Obsta
 			{
 				for (size_t count = 0; count < Obstacles.size(); ++count)
 				{
-					if (Obstacles[count].GetMyNumber() == params.tree_involved && Obstacles[count].lifes <= 0)
+					if (Obstacles[count].GetMyNumber() == params.asset_involved && Obstacles[count].lifes <= 0)
 					{
-						ret.tree_involved = params.tree_involved;
+						ret.asset_involved = params.asset_involved;
 						ret.next_action = actions::return_wood;
 						break;
 					}
@@ -722,6 +748,435 @@ ACTPARAMS dll::AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>& Obsta
 		}
 		break;
 
+	case unit_type::orc_warrior:
+		ret.next_action = my_unit.current_action;
+		if (my_unit.current_action == actions::move)
+		{
+			if (!BadArmy.empty())
+			{
+				for (size_t count = 0; count < BadArmy.size(); ++count)
+				{
+					if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+						my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+						FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+							BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+					{
+						ret.next_action = actions::melee;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+					else if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+					{
+						ret.next_action = actions::spotted;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+
+					
+				}
+			}
+
+			if (!Obstacles.empty())
+			{
+				for (size_t count = 0; count < Obstacles.size(); ++count)
+				{
+					if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+						my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+						FRECT(Obstacles[count].start.x, Obstacles[count].start.y, Obstacles[count].end.x,
+							Obstacles[count].start.y, Obstacles[count].start.x, Obstacles[count].end.y,
+							Obstacles[count].end.x, Obstacles[count].end.y)))
+					{
+						ret.asset_involved = Obstacles[count].GetMyNumber();
+						ret.next_action = actions::stop;
+						break;
+					}
+				}
+			}
+		}
+		else if (my_unit.current_action == actions::melee)
+		{
+			if (!BadArmy.empty())
+			{
+				ret.next_action = actions::stop;
+
+				for (size_t count = 0; count < BadArmy.size(); ++count)
+				{
+					if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+						my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+						FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+							BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+					{
+						ret.next_action = actions::melee;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+				}
+
+				if (ret.next_action != actions::melee)
+				{
+					for (size_t count = 0; count < BadArmy.size(); ++count)
+					{
+						if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+						{
+							ret.next_action = actions::spotted;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+					}
+				}
+			}
+			else ret.next_action = actions::stop;
+		}
+		else if (my_unit.current_action == actions::spotted)
+		{
+			ret.next_action = actions::stop;
+
+			if (!BadArmy.empty())
+			{
+				for (size_t count = 0; count < BadArmy.size(); ++count)
+				{
+					if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+						my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+						FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+							BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+					{
+						ret.next_action = actions::melee;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+					else if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+					{
+						ret.next_action = actions::spotted;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+
+
+				}
+			}
+		}
+		break;
+
+	case unit_type::warrior:
+		ret.next_action = my_unit.current_action;
+		if (my_unit.current_action == actions::move)
+			{
+				if (!BadArmy.empty())
+				{
+					for (size_t count = 0; count < BadArmy.size(); ++count)
+					{
+						if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+							my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+							FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+								BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+						{
+							ret.next_action = actions::melee;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+						else if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+						{
+							ret.next_action = actions::spotted;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+					}
+				}
+
+				if (!Obstacles.empty())
+				{
+					for (size_t count = 0; count < Obstacles.size(); ++count)
+					{
+						if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+							my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+							FRECT(Obstacles[count].start.x, Obstacles[count].start.y, Obstacles[count].end.x,
+								Obstacles[count].start.y, Obstacles[count].start.x, Obstacles[count].end.y,
+								Obstacles[count].end.x, Obstacles[count].end.y)))
+						{
+							ret.asset_involved = Obstacles[count].GetMyNumber();
+							ret.next_action = actions::stop;
+							break;
+						}
+					}
+				}
+			}
+		else if (my_unit.current_action == actions::melee)
+			{
+				if (!BadArmy.empty())
+				{
+					ret.next_action = actions::stop;
+
+					for (size_t count = 0; count < BadArmy.size(); ++count)
+					{
+						if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+							my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+							FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+								BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+						{
+							ret.next_action = actions::melee;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+					}
+
+					if (ret.next_action != actions::melee)
+					{
+						for (size_t count = 0; count < BadArmy.size(); ++count)
+						{
+							if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+							{
+								ret.next_action = actions::spotted;
+								ret.enemy_involved = BadArmy[count].GetMyNumber();
+								break;
+							}
+						}
+					}
+				}
+				else ret.next_action = actions::stop;
+			}
+		else if (my_unit.current_action == actions::spotted)
+			{
+				ret.next_action = actions::stop;
+
+				if (!BadArmy.empty())
+				{
+					for (size_t count = 0; count < BadArmy.size(); ++count)
+					{
+						if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+							my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+							FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+								BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+						{
+							ret.next_action = actions::melee;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+						else if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+						{
+							ret.next_action = actions::spotted;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+
+
+					}
+				}
+			}
+		break;
+
+	case unit_type::orc_knight:
+		ret.next_action = my_unit.current_action;
+		if (my_unit.current_action == actions::move)
+		{
+			if (!BadArmy.empty())
+			{
+				for (size_t count = 0; count < BadArmy.size(); ++count)
+				{
+					if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+						my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+						FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+							BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+					{
+						ret.next_action = actions::melee;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+					else if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+					{
+						ret.next_action = actions::spotted;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+				}
+			}
+
+			if (!Obstacles.empty())
+			{
+				for (size_t count = 0; count < Obstacles.size(); ++count)
+				{
+					if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+						my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+						FRECT(Obstacles[count].start.x, Obstacles[count].start.y, Obstacles[count].end.x,
+							Obstacles[count].start.y, Obstacles[count].start.x, Obstacles[count].end.y,
+							Obstacles[count].end.x, Obstacles[count].end.y)))
+					{
+						ret.asset_involved = Obstacles[count].GetMyNumber();
+						ret.next_action = actions::stop;
+						break;
+					}
+				}
+			}
+		}
+		else if (my_unit.current_action == actions::melee)
+		{
+			if (!BadArmy.empty())
+			{
+				ret.next_action = actions::stop;
+
+				for (size_t count = 0; count < BadArmy.size(); ++count)
+				{
+					if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+						my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+						FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+							BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+					{
+						ret.next_action = actions::melee;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+				}
+
+				if (ret.next_action != actions::melee)
+				{
+					for (size_t count = 0; count < BadArmy.size(); ++count)
+					{
+						if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+						{
+							ret.next_action = actions::spotted;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+					}
+				}
+			}
+			else ret.next_action = actions::stop;
+		}
+		else if (my_unit.current_action == actions::spotted)
+		{
+			ret.next_action = actions::stop;
+
+			if (!BadArmy.empty())
+			{
+				for (size_t count = 0; count < BadArmy.size(); ++count)
+				{
+					if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+						my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+						FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+							BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+					{
+						ret.next_action = actions::melee;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+					else if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+					{
+						ret.next_action = actions::spotted;
+						ret.enemy_involved = BadArmy[count].GetMyNumber();
+						break;
+					}
+
+
+				}
+			}
+		}
+		break;
+
+		case unit_type::knight:
+			ret.next_action = my_unit.current_action;
+			if (my_unit.current_action == actions::move)
+			{
+				if (!BadArmy.empty())
+				{
+					for (size_t count = 0; count < BadArmy.size(); ++count)
+					{
+						if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+							my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+							FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+								BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+						{
+							ret.next_action = actions::melee;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+						else if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+						{
+							ret.next_action = actions::spotted;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+					}
+				}
+
+				if (!Obstacles.empty())
+				{
+					for (size_t count = 0; count < Obstacles.size(); ++count)
+					{
+						if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+							my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+							FRECT(Obstacles[count].start.x, Obstacles[count].start.y, Obstacles[count].end.x,
+								Obstacles[count].start.y, Obstacles[count].start.x, Obstacles[count].end.y,
+								Obstacles[count].end.x, Obstacles[count].end.y)))
+						{
+							ret.asset_involved = Obstacles[count].GetMyNumber();
+							ret.next_action = actions::stop;
+							break;
+						}
+					}
+				}
+			}
+			else if (my_unit.current_action == actions::melee)
+			{
+				if (!BadArmy.empty())
+				{
+					ret.next_action = actions::stop;
+
+					for (size_t count = 0; count < BadArmy.size(); ++count)
+					{
+						if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+							my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+							FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+								BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+						{
+							ret.next_action = actions::melee;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+					}
+
+					if (ret.next_action != actions::melee)
+					{
+						for (size_t count = 0; count < BadArmy.size(); ++count)
+						{
+							if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+							{
+								ret.next_action = actions::spotted;
+								ret.enemy_involved = BadArmy[count].GetMyNumber();
+								break;
+							}
+						}
+					}
+				}
+				else ret.next_action = actions::stop;
+			}
+			else if (my_unit.current_action == actions::spotted)
+			{
+				ret.next_action = actions::stop;
+
+				if (!BadArmy.empty())
+				{
+					for (size_t count = 0; count < BadArmy.size(); ++count)
+					{
+						if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+							my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+							FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+								BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+						{
+							ret.next_action = actions::melee;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+						else if (Distance(my_unit.center, BadArmy[count].center) <= my_unit.range)
+						{
+							ret.next_action = actions::spotted;
+							ret.enemy_involved = BadArmy[count].GetMyNumber();
+							break;
+						}
+
+
+					}
+				}
+			}
+			break;
 
 
 	}

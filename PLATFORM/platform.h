@@ -17,7 +17,7 @@ constexpr float ground { 750.0f };
 
 enum class dirs { left = 0, right = 1, up = 2, down = 3, stop = 4 };
 enum class actions { stop = 0, move = 1, flee = 2, harvest = 3, shoot = 4, melee = 5, 
-	mining = 6, return_gold = 7, return_wood = 8 };
+	mining = 6, return_gold = 7, return_wood = 8, spotted = 9 };
 enum class unit_type {
 	peon = 0, orc_warrior = 1, orc_archer = 2, orc_knight = 3, artillery = 4,
 	peasant = 5, warrior = 6, archer = 7, knight = 8
@@ -39,7 +39,7 @@ struct FRECT
 struct ACTPARAMS
 {
 	actions next_action{ actions::stop };
-	int tree_involved{ -1 };
+	int asset_involved{ -1 };
 	int enemy_involved{ -1 };
 };
 
