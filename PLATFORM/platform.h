@@ -98,7 +98,7 @@ namespace dll
 				else
 				{
 					++max_size;
-					m_ptr = reinterpret_cast<T*>(realloc(m_ptr, max_size * sizeof(T));
+					m_ptr = reinterpret_cast<T*>(realloc(m_ptr, max_size * sizeof(T)));
 					if (m_ptr)
 					{
 						m_ptr[next_pos] = element;
@@ -122,7 +122,7 @@ namespace dll
 				else
 				{
 					++max_size;
-					m_ptr = reinterpret_cast<T*>(realloc(m_ptr, max_size * sizeof(T));
+					m_ptr = reinterpret_cast<T*>(realloc(m_ptr, max_size * sizeof(T)));
 					if (m_ptr)
 					{
 						m_ptr[next_pos] = (*element);
@@ -269,7 +269,7 @@ namespace dll
 		int number{ 0 };
 
 		float speed{ 0 };
-		float strenght{ 0 };
+		int strenght{ 0 };
 		float range{ 0 };
 
 		int max_frames{ 0 };
@@ -292,8 +292,6 @@ namespace dll
 
 		UNITS(unit_type what, float start_x, float start_y);
 
-		void SetPath(float _where_x, float _where_y);
-
 	public:
 		unit_type type{ unit_type::peon };
 		dirs dir{ dirs::stop };
@@ -303,6 +301,8 @@ namespace dll
 
 		virtual ~UNITS() {};
 		void Release();
+
+		void SetPath(float _where_x, float _where_y);
 
 		int GetFrame();
 		int GetMyNumber() const;
