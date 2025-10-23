@@ -138,6 +138,8 @@ float dll::PROTON::GetHeight() const
 
 // ASSETS **********************
 
+int dll::ASSETS::global_counter = 0;
+
 dll::ASSETS::ASSETS(obstacle what_type, float start_x, float start_y) :PROTON(start_x, start_y)
 {
 	type = what_type;
@@ -188,7 +190,7 @@ dll::ASSETS::ASSETS(obstacle what_type, float start_x, float start_y) :PROTON(st
 	case obstacle::mine:
 		NewDims(261.0f, 363.0f);
 		goods_delay = 100;
-		lifes = 3000;
+		lifes = 150;
 		goods_in_asset = 50;
 		max_frames = 124;
 		frame_delay = 1;
@@ -197,6 +199,9 @@ dll::ASSETS::ASSETS(obstacle what_type, float start_x, float start_y) :PROTON(st
 
 	max_frame_delay = frame_delay;
 	max_goods_delay = goods_delay;
+
+	number = global_counter;
+	++global_counter;
 }
 int dll::ASSETS::GetFrame()
 {
@@ -208,6 +213,10 @@ int dll::ASSETS::GetFrame()
 		if (frame > max_frames)frame = 0;
 	}
 	return frame;
+}
+int dll::ASSETS::GetMyNumber() const
+{
+	return number;
 }
 int dll::ASSETS::GetGoods()
 {
@@ -230,6 +239,8 @@ void dll::ASSETS::Release()
 
 
 // UNITS **********************
+
+int dll::UNITS::global_counter = 0;
 
 dll::UNITS::UNITS(unit_type what, float start_x, float start_y)
 {
@@ -329,6 +340,8 @@ dll::UNITS::UNITS(unit_type what, float start_x, float start_y)
 	}
 
 	max_attack_delay = attack_delay;
+	number = global_counter;
+	++global_counter;
 }
 void dll::UNITS::SetPath(float _where_x, float _where_y)
 {
@@ -372,6 +385,10 @@ int dll::UNITS::GetFrame()
 		if (frame > max_frames)frame = 0;
 	}
 	return frame;
+}
+int dll::UNITS::GetMyNumber() const
+{
+	return number;
 }
 void dll::UNITS::Move(float gear, BAG<ASSETS>obstacles)
 {
@@ -552,7 +569,6 @@ void dll::Sort(BAG<UNITS>& army, FPOINT target)
 	}
 }
 
-
 PLATFORM_API dll::ASSETS* dll::AssetFactory(obstacle what, float startx, float starty)
 {
 	ASSETS* ret{ nullptr };
@@ -566,6 +582,149 @@ PLATFORM_API dll::UNITS* dll::UnitFactory(unit_type what_unit, float startx, flo
 	UNITS* ret{ nullptr };
 
 	ret = new UNITS(what_unit, startx, starty);
+
+	return ret;
+}
+
+ACTPARAMS dll::AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>& Obstacles, ACTPARAMS params)
+{
+	ACTPARAMS ret{};
+
+	switch (my_unit.type)
+	{
+	case unit_type::peon:
+		if (!BadArmy.empty())
+		{
+			for (size_t count = 0; count < BadArmy.size(); ++count)
+			{
+				if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+					my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+					FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+						BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+				{
+					ret.next_action = actions::flee;
+					break;
+				}
+			}
+
+			if (ret.next_action == actions::flee)break;
+		}
+		ret.next_action = params.next_action;
+		if (my_unit.current_action == actions::move)
+			{
+				if (!Obstacles.empty())
+				{
+					for (size_t count = 0; count < Obstacles.size(); ++count)
+					{
+						if (Obstacles[count].type == obstacle::small_tree || Obstacles[count].type == obstacle::mid_tree
+							|| Obstacles[count].type == obstacle::big_tree)
+						{
+							ret.tree_involved = Obstacles[count].GetMyNumber();
+							ret.next_action = actions::harvest;
+							break;
+						}
+					}
+				}
+			}
+		else if (my_unit.current_action == actions::harvest)
+			{
+				if (!Obstacles.empty())
+				{
+					for (size_t count = 0; count < Obstacles.size(); ++count)
+					{
+						if (Obstacles[count].GetMyNumber() == params.tree_involved && Obstacles[count].lifes <= 0)
+						{
+							ret.tree_involved = params.tree_involved;
+							ret.next_action = actions::return_wood;
+							break;
+						}
+					}
+				}
+			}
+		else if (my_unit.current_action == actions::mining)
+			{
+				if (!Obstacles.empty())
+				{
+					for (size_t count = 0; count < Obstacles.size(); ++count)
+					{
+						if (Obstacles[count].lifes <= 0)
+						{
+							ret.next_action = actions::return_gold;
+							break;
+						}
+					}
+				}
+			}
+		break;
+
+	case unit_type::peasant:
+		if (!BadArmy.empty())
+		{
+			for (size_t count = 0; count < BadArmy.size(); ++count)
+			{
+				if (Intersect(FRECT(my_unit.start.x, my_unit.start.y, my_unit.end.x, my_unit.start.y,
+					my_unit.start.x, my_unit.end.y, my_unit.end.x, my_unit.end.y),
+					FRECT(BadArmy[count].start.x, BadArmy[count].start.y, BadArmy[count].end.x, BadArmy[count].start.y,
+						BadArmy[count].start.x, BadArmy[count].end.y, BadArmy[count].end.x, BadArmy[count].end.y)))
+				{
+					ret.next_action = actions::flee;
+					break;
+				}
+			}
+
+			if (ret.next_action == actions::flee)break;
+		}
+		ret.next_action = params.next_action;
+		if (my_unit.current_action == actions::move)
+		{
+			if (!Obstacles.empty())
+			{
+				for (size_t count = 0; count < Obstacles.size(); ++count)
+				{
+					if (Obstacles[count].type == obstacle::small_tree || Obstacles[count].type == obstacle::mid_tree
+						|| Obstacles[count].type == obstacle::big_tree)
+					{
+						ret.tree_involved = Obstacles[count].GetMyNumber();
+						ret.next_action = actions::harvest;
+						break;
+					}
+				}
+			}
+		}
+		else if (my_unit.current_action == actions::harvest)
+		{
+			if (!Obstacles.empty())
+			{
+				for (size_t count = 0; count < Obstacles.size(); ++count)
+				{
+					if (Obstacles[count].GetMyNumber() == params.tree_involved && Obstacles[count].lifes <= 0)
+					{
+						ret.tree_involved = params.tree_involved;
+						ret.next_action = actions::return_wood;
+						break;
+					}
+				}
+			}
+		}
+		else if (my_unit.current_action == actions::mining)
+		{
+			if (!Obstacles.empty())
+			{
+				for (size_t count = 0; count < Obstacles.size(); ++count)
+				{
+					if (Obstacles[count].lifes <= 0)
+					{
+						ret.next_action = actions::return_gold;
+						break;
+					}
+				}
+			}
+		}
+		break;
+
+
+
+	}
 
 	return ret;
 }

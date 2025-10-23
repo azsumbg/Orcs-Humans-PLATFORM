@@ -16,7 +16,8 @@ constexpr float sky{ 50.0f };
 constexpr float ground { 750.0f };
 
 enum class dirs { left = 0, right = 1, up = 2, down = 3, stop = 4 };
-enum class actions { stop = 0, move = 1, flee = 2, harvest = 3, shoot = 4, melee = 5 };
+enum class actions { stop = 0, move = 1, flee = 2, harvest = 3, shoot = 4, melee = 5, 
+	mining = 6, return_gold = 7, return_wood = 8 };
 enum class unit_type {
 	peon = 0, orc_warrior = 1, orc_archer = 2, orc_knight = 3, artillery = 4,
 	peasant = 5, warrior = 6, archer = 7, knight = 8
@@ -34,6 +35,12 @@ struct FRECT
 	FPOINT up_right{ 0 };
 	FPOINT down_left{ 0 };
 	FPOINT down_right{ 0 };
+};
+struct ACTPARAMS
+{
+	actions next_action{ actions::stop };
+	int tree_involved{ -1 };
+	int enemy_involved{ -1 };
 };
 
 namespace dll
@@ -226,6 +233,11 @@ namespace dll
 	class PLATFORM_API ASSETS :public PROTON
 	{
 	private:
+
+		static int global_counter;
+
+		int number{ 0 };
+
 		int goods_in_asset{ 0 };
 		int goods_delay = 0;
 		int max_goods_delay;
@@ -242,6 +254,7 @@ namespace dll
 		int lifes = 0;
 
 		int GetFrame();
+		int GetMyNumber() const;
 		int GetGoods();
 		void Release();
 
@@ -251,6 +264,10 @@ namespace dll
 	class PLATFORM_API UNITS :public PROTON
 	{
 	private:
+		static int global_counter;
+
+		int number{ 0 };
+
 		float speed{ 0 };
 		float strenght{ 0 };
 		float range{ 0 };
@@ -288,11 +305,12 @@ namespace dll
 		void Release();
 
 		int GetFrame();
+		int GetMyNumber() const;
 
 		void Move(float gear, BAG<ASSETS>obstacles);
 		int Attack();
 
-		friend PLATFORM_API actions AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>Obstacles);
+		friend PLATFORM_API ACTPARAMS AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>& Obstacles, ACTPARAMS params);
 		friend PLATFORM_API UNITS* UnitFactory(unit_type what_unit, float startx, float starty);	
 	};
 
@@ -352,7 +370,7 @@ namespace dll
 	float PLATFORM_API Distance(FPOINT first, FPOINT second);
 	void PLATFORM_API Sort(BAG<UNITS>& army, FPOINT target);
 
-	PLATFORM_API actions AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>Obstacles);
+	PLATFORM_API ACTPARAMS AINextMove(UNITS my_unit, BAG<UNITS>& BadArmy, BAG<ASSETS>& Obstacles, ACTPARAMS params);
 
 	PLATFORM_API ASSETS* AssetFactory(obstacle what, float startx, float starty);
 
